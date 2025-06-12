@@ -1,0 +1,85 @@
+CREATE DATABASE HOSPITAL_PROJECT
+
+USE HOSPITAL_PROJECT
+
+-- Create the HOSPITAL table to store hospital-related data
+CREATE TABLE HOSPITAL (
+    Reference INT PRIMARY KEY,  -- Unique identifier for each hospital
+    AdmissionDate DATE NOT NULL,  -- Date the hospital admitted its first patient
+    HospitalType VARCHAR(50) NOT NULL,  -- Type of hospital (e.g., General, Specialized)
+    Operation VARCHAR(100) NOT NULL,  -- Type of medical operation the hospital performs
+    Location VARCHAR(255) NOT NULL,  -- Address or geographical location of the hospital
+    BedCapacity INT NOT NULL,  -- Number of available hospital beds
+    AnnualBudget DECIMAL(15,2) NOT NULL,  -- Annual financial budget allocated to the hospital
+    LastInspectionDate DATE NOT NULL,  -- Last inspection date for compliance
+    Director VARCHAR(100) NOT NULL,  -- Name of the hospital director
+    Status VARCHAR(50) NOT NULL,  -- Operational status of the hospital
+    TotalStaff INT NOT NULL,  -- Total number of staff members employed
+    OccupancyRate DECIMAL(5,2) NOT NULL  -- Percentage of bed occupancy
+);
+
+
+SELECT * FROM HOSPITAL_PROJECT;
+
+-- Cleaning the AnnualBudget column by removing the dollar sign ($)
+UPDATE HOSPITAL_PROJECT
+SET AnnualBudget = REPLACE(AnnualBudget, '$', '');
+
+-- Cleaning the Status column by extracting relevant data
+SELECT 
+    RIGHT(Status, LEN(Status) - 4) AS CleanStatus  -- Removes first four characters
+FROM HOSPITAL;
+
+-- Cleaning the OccupancyRate column by removing the percentage sign (%) and converting to decimal format
+SELECT 
+    CAST(REPLACE(OccupancyRate, '%', '') AS DECIMAL(5,2)) / 100 AS CleanOccupancyRate
+FROM HOSPITAL;
+
+-- Removing unwanted prefixes from Status column
+UPDATE HOSPITAL_PROJECT
+SET Status = 
+    CASE 
+        WHEN Status LIKE 'C = %' THEN REPLACE(Status, 'C = ', '')
+        WHEN Status LIKE 'C-=-%' THEN REPLACE(Status, 'C-=-', '')
+        WHEN Status LIKE 'F = %' THEN REPLACE(Status, 'F = ', '')
+        WHEN Status LIKE 'F-=-%' THEN REPLACE(Status, 'F-=-', '')
+        WHEN Status LIKE 'M = %' THEN REPLACE(Status, 'M = ', '')
+        WHEN Status LIKE 'M-=-%' THEN REPLACE(Status, 'M-=-', '') 
+        ELSE Status 
+    END;
+
+-- Cleaning OccupancyRate column again
+UPDATE HOSPITAL_PROJECT
+SET OccupancyRate = CAST(REPLACE(OccupancyRate, '%', '') AS DECIMAL(5,2)) / 100;
+
+-- Formatting dates to 'dd/MM/yyyy'
+SELECT FORMAT(AdmissionDate, 'dd/MM/yyyy') AS CleanDate
+FROM HOSPITAL;
+
+-- Updating date format
+UPDATE HOSPITAL_PROJECT
+SET AdmissionDate = FORMAT(AdmissionDate, 'dd/MM/yyyy'),
+    LastInspectionDate = FORMAT(LastInspectionDate, 'dd/MM/yyyy');
+
+-- Ensuring dates are stored in the correct format
+UPDATE HOSPITAL_PROJECT
+SET AdmissionDate = CONVERT(DATE, AdmissionDate, 103),
+    LastInspectionDate = CONVERT(DATE, LastInspectionDate, 103);
+
+SELECT AdmissionDate, TRY_CONVERT(DATE, AdmissionDate, 103) AS CleanDate
+FROM HOSPITAL_PROJECT;
+
+-- Cleaning Location column by splitting its values into three separate columns
+ALTER TABLE HOSPITAL_PROJECT
+ADD Location1 VARCHAR(100),
+    Location2 VARCHAR(100),
+    Location3 VARCHAR(100);
+
+-- Separating different parts of the location string into distinct columns
+UPDATE HOSPITAL_PROJECT
+SET Location1 = LEFT(Location, CHARINDEX('|', Location) - 1), 
+    Location2 = SUBSTRING(Location, CHARINDEX('|', Location) + 1, CHARINDEX('|', Location, CHARINDEX('|', Location) + 1) - CHARINDEX('|', Location) - 1), 
+    Location3 = RIGHT(Location, LEN(Location) - CHARINDEX('|', Location, CHARINDEX('|', Location) + 1));
+
+-- Removing the original Location column after splitting
+ALTER TABLE HOSPITAL_PROJECT DROP COLUMN Location;
